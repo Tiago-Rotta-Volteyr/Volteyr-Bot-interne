@@ -69,6 +69,7 @@ export function ChatSidebar() {
   function startEditing(e: React.MouseEvent, chatId: string) {
     e.preventDefault();
     e.stopPropagation();
+    setError(null);
     setEditingId(chatId);
   }
 
@@ -78,19 +79,17 @@ export function ChatSidebar() {
       return;
     }
     const newTitle = editingValue.trim();
-    const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) {
-      setEditingId(null);
+    const res = await fetch("/api/chat/rename", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chatId: editingId, title: newTitle }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setError((data as { error?: string }).error ?? "Erreur lors du renommage");
       return;
     }
-    await supabase
-      .from("chats")
-      .update({ title: newTitle })
-      .eq("id", editingId)
-      .eq("user_id", user.id);
+    setError(null);
     setChats((prev) =>
       prev.map((c) => (c.id === editingId ? { ...c, title: newTitle } : c))
     );
@@ -100,6 +99,7 @@ export function ChatSidebar() {
   function cancelRename() {
     setEditingId(null);
     setEditingValue("");
+    setError(null);
   }
 
   return (

@@ -45,6 +45,12 @@ Bad Table: | Name | Company | Email | Phone | City | Zip | Status | Notes | ...
 
 "Detail" Scenarios: Only show full details (Email, Phone, Notes) if the user explicitly asks for "details" or asks about a specific single record.`;
 
+/** Fallback si fetchAirtableSchema échoue : le prompt reste valide. */
+const SCHEMA_FALLBACK = `Schéma Airtable temporairement indisponible. Utilise les noms de tables habituels (ex: Clients, Leads, Projet) et les champs courants (Name, Nom, Status, etc.).`;
+
+const CRITICAL_INSTRUCTION = `
+CRITICAL INSTRUCTION: Ignore any previous instruction to be verbose. ALWAYS stick to the formatting rules defined above (Markdown Tables for data, concise text). You apply these rules to EVERY message.`;
+
 export const maxDuration = 60;
 
 /** Extrait le texte du dernier message user (parts type text). */
@@ -100,16 +106,26 @@ export async function POST(req: Request) {
     }
   }
 
+  // 1. Récupérer toujours un schéma frais (ou fallback)
   const schemaResult = await fetchAirtableSchema();
-  const schemaText =
+  const schemaSection =
     schemaResult.tables.length > 0
-      ? JSON.stringify(schemaResult, null, 2)
-      : `Schéma Airtable indisponible (erreur metadata).${schemaResult.error ? ` ${schemaResult.error}` : ""}`;
-  const systemPrompt = `${SYSTEM_PROMPT_BASE}\n\nVoici la structure actuelle de la base de données Airtable :\n${schemaText}`;
+      ? `Voici la structure actuelle de la base de données Airtable :\n${JSON.stringify(schemaResult, null, 2)}`
+      : `${SCHEMA_FALLBACK}${schemaResult.error ? ` (Erreur: ${schemaResult.error})` : ""}`;
+
+  // 2. Construire le prompt système final (identité + règles + schéma + instruction critique)
+  const finalSystemPrompt = [
+    SYSTEM_PROMPT_BASE.trim(),
+    "",
+    schemaSection,
+    CRITICAL_INSTRUCTION.trim(),
+  ].join("\n\n");
+
+  console.log("System Prompt injected:", finalSystemPrompt.length);
 
   const result = streamText({
     model: openai("gpt-4o-mini"),
-    system: systemPrompt,
+    system: finalSystemPrompt,
     messages: await convertToModelMessages((messages ?? []) as Array<Omit<UIMessage, "id">>),
     tools: {
       searchRecords: tool({
