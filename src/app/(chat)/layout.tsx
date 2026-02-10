@@ -1,9 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { Chat } from "@/components/chat";
 import { ChatLayout } from "@/components/chat-layout";
 
-export default async function HomePage() {
+export default async function ChatAreaLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -13,9 +16,5 @@ export default async function HomePage() {
     redirect("/login");
   }
 
-  return (
-    <ChatLayout>
-      <Chat />
-    </ChatLayout>
-  );
+  return <ChatLayout>{children}</ChatLayout>;
 }

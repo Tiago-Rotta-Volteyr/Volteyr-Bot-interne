@@ -15,6 +15,13 @@ const TOOL_LABELS: Record<string, string> = {
   getRecordDetails: "📄 Lecture du dossier en cours...",
 };
 
+const SUGGESTIONS = [
+  "Liste mes clients",
+  "Chercher un lead",
+  "Quels sont les projets en cours ?",
+  "Donne-moi les détails d'un client",
+];
+
 function getToolLabel(toolName: string): string {
   return TOOL_LABELS[toolName] ?? "Traitement en cours...";
 }
@@ -28,18 +35,19 @@ interface ChatProps {
   initialMessages?: UIMessage[];
 }
 
+const PENDING_MESSAGE_KEY = (id: string) => `pendingMessage:${id}`;
+
 export function Chat({ chatId, initialMessages }: ChatProps) {
   const [input, setInput] = useState("");
+  const [isCreatingChat, setIsCreatingChat] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const pendingChatIdRef = useRef<string | undefined>(undefined);
-  const hasRedirectedRef = useRef(false);
   const router = useRouter();
 
   const transport = useMemo(
     () =>
       new DefaultChatTransport({
         api: "/api/chat",
-        body: () => ({ chatId: pendingChatIdRef.current ?? chatId ?? "" }),
+        body: () => ({ chatId: chatId ?? "" }),
       }),
     [chatId]
   );
@@ -49,9 +57,8 @@ export function Chat({ chatId, initialMessages }: ChatProps) {
     messages: initialMessages,
     transport,
     onFinish() {
-      if (!chatId && !hasRedirectedRef.current && pendingChatIdRef.current) {
-        hasRedirectedRef.current = true;
-        router.replace(`/c/${pendingChatIdRef.current}`);
+      if (chatId) {
+        window.dispatchEvent(new CustomEvent("chat-created"));
       }
     },
   });
@@ -62,14 +69,61 @@ export function Chat({ chatId, initialMessages }: ChatProps) {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
+  // Send pending message when landing on /c/[id] with a message stored from home
+  useEffect(() => {
+    if (!chatId || typeof window === "undefined") return;
+    const pending = sessionStorage.getItem(PENDING_MESSAGE_KEY(chatId));
+    if (pending) {
+      sessionStorage.removeItem(PENDING_MESSAGE_KEY(chatId));
+      sendMessage({ text: pending });
+    }
+  }, [chatId]); // eslint-disable-line react-hooks/exhaustive-deps -- only run when chatId is set, sendMessage is stable
+
+  async function startNewChatWithMessage(text: string) {
+    if (!text.trim() || isCreatingChat) return;
+    setIsCreatingChat(true);
+    const newId = crypto.randomUUID();
+    try {
+      const res = await fetch("/api/chat/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chatId: newId }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error((data as { error?: string }).error ?? "Erreur lors de la création");
+      }
+      sessionStorage.setItem(PENDING_MESSAGE_KEY(newId), text);
+      window.dispatchEvent(new CustomEvent("chat-created"));
+      router.push(`/c/${newId}`);
+      setInput("");
+    } catch (err) {
+      console.error(err);
+      // Could show a toast here
+    } finally {
+      setIsCreatingChat(false);
+    }
+  }
+
+  function handleSubmit(e?: React.FormEvent<HTMLFormElement>) {
+    e?.preventDefault();
     const text = input.trim();
     if (!text || isLoading) return;
-    if (!chatId && !pendingChatIdRef.current) {
-      pendingChatIdRef.current = crypto.randomUUID();
+    if (!chatId) {
+      startNewChatWithMessage(text);
+      return;
     }
     sendMessage({ text });
+    setInput("");
+  }
+
+  function handleSuggestionClick(suggestion: string) {
+    if (!chatId) {
+      startNewChatWithMessage(suggestion);
+      return;
+    }
+    setInput(suggestion);
+    sendMessage({ text: suggestion });
     setInput("");
   }
 
@@ -79,10 +133,25 @@ export function Chat({ chatId, initialMessages }: ChatProps) {
         <div className="mx-auto max-w-2xl space-y-6">
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center py-16 text-center">
-              <Bot className="mb-4 h-12 w-12 text-neutral-400" />
-              <p className="text-sm text-neutral-500">
+              <h2 className="mb-2 text-2xl font-semibold text-neutral-800">
+                Que puis-je faire pour vous aujourd'hui ?
+              </h2>
+              <p className="mb-8 text-sm text-neutral-500">
                 Posez une question sur les clients, leads ou projets Volteyr.
               </p>
+              <div className="flex flex-wrap justify-center gap-2">
+                {SUGGESTIONS.map((suggestion) => (
+                  <button
+                    key={suggestion}
+                    type="button"
+                    onClick={() => handleSuggestionClick(suggestion)}
+                    disabled={isLoading || isCreatingChat}
+                    className="rounded-lg border border-neutral-200 bg-white px-4 py-2.5 text-sm text-neutral-700 shadow-sm transition hover:bg-neutral-50 hover:border-neutral-300 disabled:opacity-50"
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 
@@ -213,12 +282,12 @@ export function Chat({ chatId, initialMessages }: ChatProps) {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Votre message..."
-              disabled={isLoading}
+              disabled={isLoading || isCreatingChat}
               className="flex-1 bg-transparent px-4 py-3 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none disabled:opacity-50"
             />
             <button
               type="submit"
-              disabled={isLoading || !input.trim()}
+              disabled={isLoading || isCreatingChat || !input.trim()}
               className="flex items-center justify-center rounded-r-xl bg-neutral-900 px-4 text-white transition hover:bg-neutral-800 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Send className="h-4 w-4" />

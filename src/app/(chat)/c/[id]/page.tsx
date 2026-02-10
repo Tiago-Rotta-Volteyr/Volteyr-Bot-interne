@@ -1,7 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { notFound, redirect } from "next/navigation";
 import { Chat } from "@/components/chat";
-import { ChatLayout } from "@/components/chat-layout";
 
 function parseAssistantContent(content: string): string {
   try {
@@ -61,9 +60,5 @@ export default async function ChatPage({
 
   const initialMessages = dbMessagesToUIMessages(messages ?? []);
 
-  return (
-    <ChatLayout headerTitle={chat.title || "Assistant Volteyr"}>
-      <Chat chatId={chatId} initialMessages={initialMessages} />
-    </ChatLayout>
-  );
+  return <Chat chatId={chatId} initialMessages={initialMessages} />;
 }
