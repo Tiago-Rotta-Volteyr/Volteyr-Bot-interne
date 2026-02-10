@@ -10,6 +10,9 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "Assistant Volteyr",
   description: "Chatbot interne de l'agence Volteyr",
+  icons: {
+    icon: "/preview_logo.jpg",
+  },
 };
 
 export default function RootLayout({

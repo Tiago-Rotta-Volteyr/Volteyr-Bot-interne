@@ -18,7 +18,7 @@ export function AuthButton() {
     <button
       type="button"
       onClick={handleSignOut}
-      className="flex items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm font-medium text-neutral-700 shadow-sm transition hover:bg-neutral-50 hover:border-neutral-300"
+      className="flex items-center gap-2 rounded-lg border border-neutral-700 bg-neutral-900/50 px-3 py-2 text-sm font-medium text-neutral-300 shadow-sm transition hover:bg-neutral-800 hover:border-neutral-600"
     >
       <LogOut className="h-4 w-4" />
       Se déconnecter

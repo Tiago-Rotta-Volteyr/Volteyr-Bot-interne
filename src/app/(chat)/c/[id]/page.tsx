@@ -41,24 +41,26 @@ export default async function ChatPage({
     redirect("/login");
   }
 
-  const { data: chat, error: chatError } = await supabase
-    .from("chats")
-    .select("id, title")
-    .eq("id", chatId)
-    .eq("user_id", user.id)
-    .single();
+  const [chatResult, messagesResult] = await Promise.all([
+    supabase
+      .from("chats")
+      .select("id, title")
+      .eq("id", chatId)
+      .eq("user_id", user.id)
+      .single(),
+    supabase
+      .from("messages")
+      .select("id, role, content")
+      .eq("chat_id", chatId)
+      .order("created_at", { ascending: true }),
+  ]);
 
+  const { data: chat, error: chatError } = chatResult;
   if (chatError || !chat) {
     notFound();
   }
 
-  const { data: messages } = await supabase
-    .from("messages")
-    .select("id, role, content")
-    .eq("chat_id", chatId)
-    .order("created_at", { ascending: true });
-
-  const initialMessages = dbMessagesToUIMessages(messages ?? []);
+  const initialMessages = dbMessagesToUIMessages(messagesResult.data ?? []);
 
   return <Chat chatId={chatId} initialMessages={initialMessages} />;
 }

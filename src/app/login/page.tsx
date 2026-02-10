@@ -13,9 +13,9 @@ export default async function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-neutral-50 px-4">
-      <div className="w-full max-w-sm rounded-xl border border-neutral-200 bg-white p-8 shadow-sm">
-        <h1 className="mb-6 text-center text-xl font-semibold text-neutral-900">
+    <main className="flex min-h-screen flex-col items-center justify-center bg-black px-4">
+      <div className="w-full max-w-sm rounded-xl border border-neutral-800 bg-neutral-900/50 p-8 shadow-sm">
+        <h1 className="mb-6 text-center text-xl font-semibold text-neutral-100">
           Connexion
         </h1>
         <LoginForm />

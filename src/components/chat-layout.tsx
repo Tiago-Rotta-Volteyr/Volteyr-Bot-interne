@@ -7,7 +7,7 @@ interface ChatLayoutProps {
 
 export function ChatLayout({ children }: ChatLayoutProps) {
   return (
-    <main className="flex h-screen bg-neutral-50">
+    <main className="flex h-screen bg-black">
       <ChatSidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
         <ChatHeader />

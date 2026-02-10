@@ -88,7 +88,7 @@ function ActionButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="flex items-center gap-2 px-4 py-2 rounded-full border border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900 hover:border-neutral-300 transition-colors text-xs disabled:opacity-50"
+      className="flex items-center gap-2 px-4 py-2 rounded-full border border-neutral-500 bg-neutral-800 text-neutral-300 hover:bg-neutral-700 hover:text-white hover:border-neutral-400 transition-colors text-xs disabled:opacity-50"
     >
       <span>{label}</span>
     </button>
@@ -212,10 +212,10 @@ export function Chat({ chatId, initialMessages }: ChatProps) {
         <div className="mx-auto max-w-2xl space-y-6">
           {isEmpty && (
             <div className="flex flex-col items-center justify-center py-16 text-center">
-              <h2 className="mb-2 text-2xl font-semibold text-neutral-800">
+              <h2 className="mb-2 text-2xl font-semibold text-neutral-100">
                 Que puis-je faire pour vous aujourd'hui ?
               </h2>
-              <p className="text-sm text-neutral-500">
+              <p className="text-sm text-neutral-400">
                 Posez une question sur les clients, leads ou projets Volteyr.
               </p>
             </div>
@@ -233,8 +233,8 @@ export function Chat({ chatId, initialMessages }: ChatProps) {
                 className={cn(
                   "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
                   message.role === "user"
-                    ? "bg-neutral-900 text-white"
-                    : "bg-neutral-200 text-neutral-600"
+                    ? "bg-neutral-500 text-white"
+                    : "bg-neutral-600 text-neutral-100"
                 )}
               >
                 {message.role === "user" ? (
@@ -249,14 +249,14 @@ export function Chat({ chatId, initialMessages }: ChatProps) {
                   if (part.type === "text") {
                     const content =
                       message.role === "assistant" ? (
-                        <div className="markdown-chat text-neutral-800 [&_p]:my-1 [&_ul]:my-2 [&_ol]:my-2">
+                        <div className="markdown-chat text-neutral-100 [&_p]:my-1 [&_ul]:my-2 [&_ol]:my-2">
                           <ReactMarkdown
                             remarkPlugins={[remarkGfm]}
                             components={{
                               table: ({ children, ...props }) => (
                                 <div className="my-3 w-full overflow-x-auto">
                                   <table
-                                    className="min-w-full border-collapse border border-neutral-300"
+                                    className="min-w-full border-collapse border border-neutral-600"
                                     {...props}
                                   >
                                     {children}
@@ -265,7 +265,7 @@ export function Chat({ chatId, initialMessages }: ChatProps) {
                               ),
                               th: ({ children, ...props }) => (
                                 <th
-                                  className="border border-neutral-300 bg-neutral-100 px-3 py-2 text-left text-sm font-medium text-neutral-800"
+                                  className="border border-neutral-500 bg-neutral-700 px-3 py-2 text-left text-sm font-medium text-neutral-100"
                                   {...props}
                                 >
                                   {children}
@@ -273,7 +273,7 @@ export function Chat({ chatId, initialMessages }: ChatProps) {
                               ),
                               td: ({ children, ...props }) => (
                                 <td
-                                  className="border border-neutral-300 px-3 py-2 text-sm text-neutral-800"
+                                  className="border border-neutral-500 px-3 py-2 text-sm text-neutral-100"
                                   {...props}
                                 >
                                   {children}
@@ -293,8 +293,8 @@ export function Chat({ chatId, initialMessages }: ChatProps) {
                         className={cn(
                           "rounded-2xl px-4 py-2.5 text-sm",
                           message.role === "user"
-                            ? "bg-neutral-900 text-white"
-                            : "bg-white border border-neutral-200 text-neutral-800 shadow-sm"
+                            ? "bg-neutral-600 text-white"
+                            : "bg-neutral-800 border border-neutral-600 text-neutral-100"
                         )}
                       >
                         {content}
@@ -309,7 +309,7 @@ export function Chat({ chatId, initialMessages }: ChatProps) {
                       return (
                         <div
                           key={`${message.id}-tool-${part.toolCallId}`}
-                          className="flex items-center gap-2 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-xs text-neutral-600"
+                          className="flex items-center gap-2 rounded-lg border border-neutral-600 bg-neutral-700 px-3 py-2 text-xs text-neutral-200"
                         >
                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
                           {getToolLabel(toolName)}
@@ -327,10 +327,10 @@ export function Chat({ chatId, initialMessages }: ChatProps) {
 
           {isLoading && messages[messages.length - 1]?.role === "user" && (
             <div className="flex gap-3">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-neutral-200 text-neutral-600">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-neutral-600 text-neutral-100">
                 <Bot className="h-4 w-4" />
               </div>
-              <div className="flex items-center gap-2 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-xs text-neutral-600">
+              <div className="flex items-center gap-2 rounded-lg border border-neutral-600 bg-neutral-700 px-3 py-2 text-xs text-neutral-200">
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 Réflexion...
               </div>
@@ -341,10 +341,10 @@ export function Chat({ chatId, initialMessages }: ChatProps) {
         </div>
       </div>
 
-      <div className="shrink-0 border-t border-neutral-200 bg-neutral-50 px-4 py-4">
+      <div className="shrink-0 border-t border-neutral-700 bg-neutral-950 px-4 py-4">
         <div className="mx-auto max-w-2xl space-y-4">
           <form onSubmit={handleSubmit}>
-            <div className="relative rounded-xl border border-neutral-200 bg-white shadow-sm focus-within:ring-2 focus-within:ring-neutral-400 focus-within:ring-offset-2 focus-within:border-neutral-300">
+            <div className="relative rounded-xl border border-neutral-600 bg-neutral-800 shadow-sm focus-within:ring-2 focus-within:ring-neutral-500 focus-within:ring-offset-2 focus-within:ring-offset-neutral-950 focus-within:border-neutral-500">
               <div className="overflow-y-auto">
                 <Textarea
                   ref={textareaRef}
@@ -358,7 +358,7 @@ export function Chat({ chatId, initialMessages }: ChatProps) {
                   disabled={isLoading || isCreatingChat}
                   className={cn(
                     "w-full px-4 py-3 resize-none bg-transparent border-none",
-                    "text-neutral-900 text-sm",
+                    "text-white text-sm",
                     "focus:outline-none focus-visible:ring-0 focus-visible:ring-offset-0",
                     "placeholder:text-neutral-400 placeholder:text-sm",
                     "min-h-[60px] disabled:opacity-50"
@@ -366,13 +366,13 @@ export function Chat({ chatId, initialMessages }: ChatProps) {
                   style={{ overflow: "hidden" }}
                 />
               </div>
-              <div className="flex items-center justify-between p-3 border-t border-neutral-100">
+              <div className="flex items-center justify-between p-3 border-t border-neutral-600">
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    className="group p-2 hover:bg-neutral-100 rounded-lg transition-colors flex items-center gap-1"
+                    className="group p-2 hover:bg-neutral-700 rounded-lg transition-colors flex items-center gap-1"
                   >
-                    <Paperclip className="w-4 h-4 text-neutral-500" />
+                    <Paperclip className="w-4 h-4 text-neutral-300" />
                     <span className="text-xs text-neutral-400 hidden group-hover:inline transition-opacity">
                       Joindre
                     </span>
@@ -384,11 +384,11 @@ export function Chat({ chatId, initialMessages }: ChatProps) {
                   className={cn(
                     "px-3 py-1.5 rounded-lg text-sm transition-colors border flex items-center gap-1",
                     input.trim()
-                      ? "bg-neutral-900 text-white border-neutral-900 hover:bg-neutral-800"
-                      : "text-neutral-400 border-neutral-200 bg-neutral-50"
+                      ? "bg-white text-black border-white hover:bg-neutral-200"
+                      : "text-neutral-400 border-neutral-600 bg-neutral-700"
                   )}
                 >
-                  <Send className={cn("w-4 h-4", input.trim() ? "text-white" : "text-neutral-400")} />
+                  <Send className={cn("w-4 h-4", input.trim() ? "text-black" : "text-neutral-400")} />
                   <span className="sr-only">Envoyer</span>
                 </button>
               </div>

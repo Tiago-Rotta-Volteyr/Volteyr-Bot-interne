@@ -103,11 +103,11 @@ export function ChatSidebar() {
   }
 
   return (
-    <aside className="flex w-64 shrink-0 flex-col border-r border-neutral-200 bg-white">
-      <div className="border-b border-neutral-200 p-3">
+    <aside className="flex w-64 shrink-0 flex-col border-r border-neutral-800 bg-black">
+      <div className="border-b border-neutral-800 p-3">
         <Link
           href="/"
-          className="flex items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm font-medium text-neutral-700 transition hover:bg-neutral-50"
+          className="flex items-center gap-2 rounded-lg border border-neutral-700 bg-neutral-900/50 px-3 py-2 text-sm font-medium text-neutral-300 transition hover:bg-neutral-800 hover:border-neutral-600"
         >
           <Plus className="h-4 w-4" />
           Nouvelle conversation
@@ -115,12 +115,12 @@ export function ChatSidebar() {
       </div>
       <nav className="flex-1 overflow-y-auto p-2">
         {error && (
-          <p className="px-3 py-2 text-sm text-red-600">Erreur: {error}</p>
+          <p className="px-3 py-2 text-sm text-red-400">Erreur: {error}</p>
         )}
         {loading ? (
           <div className="space-y-1 p-2">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-10 animate-pulse rounded-lg bg-neutral-100" />
+              <div key={i} className="h-10 animate-pulse rounded-lg bg-neutral-800" />
             ))}
           </div>
         ) : (
@@ -142,15 +142,17 @@ export function ChatSidebar() {
                           if (e.key === "Escape") cancelRename();
                         }}
                         onBlur={saveRename}
-                        className="w-full rounded border border-neutral-200 px-2 py-1 text-sm text-neutral-900 focus:border-neutral-400 focus:outline-none"
+                        className="w-full rounded border border-neutral-600 bg-neutral-900 px-2 py-1 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-neutral-500 focus:outline-none"
                         aria-label="Nouveau nom de la conversation"
                       />
                     </div>
                   ) : (
                     <Link
                       href={`/c/${chat.id}`}
-                      className={`group flex items-center justify-between gap-1 rounded-lg px-3 py-2 text-sm text-neutral-700 line-clamp-2 transition hover:bg-neutral-100 ${
-                        isActive ? "bg-neutral-100" : ""
+                      className={`group flex items-center justify-between gap-1 rounded-lg px-3 py-2 text-sm line-clamp-2 transition ${
+                        isActive
+                          ? "bg-neutral-700 text-neutral-100"
+                          : "bg-neutral-900/60 text-neutral-200 hover:bg-neutral-800"
                       }`}
                     >
                       <span className="min-w-0 flex-1 truncate">
@@ -160,18 +162,18 @@ export function ChatSidebar() {
                         <button
                           type="button"
                           onClick={(e) => startEditing(e, chat.id)}
-                          className="rounded p-1 opacity-0 transition hover:bg-neutral-200 hover:opacity-100 group-hover:opacity-70"
+                          className="rounded p-1 opacity-60 transition hover:bg-neutral-600 hover:opacity-100 text-neutral-400 hover:text-neutral-100"
                           aria-label="Renommer"
                         >
-                          <Pencil className="h-3.5 w-3.5 text-neutral-500" />
+                          <Pencil className="h-3.5 w-3.5" />
                         </button>
                         <button
                           type="button"
                           onClick={(e) => handleDelete(e, chat.id)}
-                          className="rounded p-1 opacity-0 transition hover:bg-neutral-200 hover:opacity-100 group-hover:opacity-70"
+                          className="rounded p-1 opacity-60 transition hover:bg-neutral-600 hover:opacity-100 text-neutral-400 hover:text-neutral-100"
                           aria-label="Supprimer"
                         >
-                          <Trash2 className="h-3.5 w-3.5 text-neutral-500" />
+                          <Trash2 className="h-3.5 w-3.5" />
                         </button>
                       </span>
                     </Link>
