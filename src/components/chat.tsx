@@ -3,11 +3,12 @@
 import { useChat } from "@ai-sdk/react";
 import type { UIMessage } from "ai";
 import { DefaultChatTransport } from "ai";
-import { Bot, Loader2, Send, User } from "lucide-react";
+import { Bot, Loader2, Paperclip, Send, User } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useRef, useEffect, useState, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
 const TOOL_LABELS: Record<string, string> = {
@@ -30,6 +31,70 @@ function isToolPart(part: { type: string }): part is { type: string; state?: str
   return part.type.startsWith("tool-");
 }
 
+function useAutoResizeTextarea({
+  minHeight,
+  maxHeight,
+}: {
+  minHeight: number;
+  maxHeight?: number;
+}) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const adjustHeight = useCallback(
+    (reset?: boolean) => {
+      const textarea = textareaRef.current;
+      if (!textarea) return;
+
+      if (reset) {
+        textarea.style.height = `${minHeight}px`;
+        return;
+      }
+
+      textarea.style.height = `${minHeight}px`;
+      const newHeight = Math.max(
+        minHeight,
+        Math.min(textarea.scrollHeight, maxHeight ?? Number.POSITIVE_INFINITY)
+      );
+      textarea.style.height = `${newHeight}px`;
+    },
+    [minHeight, maxHeight]
+  );
+
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (textarea) textarea.style.height = `${minHeight}px`;
+  }, [minHeight]);
+
+  useEffect(() => {
+    const handleResize = () => adjustHeight();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [adjustHeight]);
+
+  return { textareaRef, adjustHeight };
+}
+
+function ActionButton({
+  label,
+  onClick,
+  disabled,
+}: {
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="flex items-center gap-2 px-4 py-2 rounded-full border border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900 hover:border-neutral-300 transition-colors text-xs disabled:opacity-50"
+    >
+      <span>{label}</span>
+    </button>
+  );
+}
+
 interface ChatProps {
   chatId?: string;
   initialMessages?: UIMessage[];
@@ -42,6 +107,10 @@ export function Chat({ chatId, initialMessages }: ChatProps) {
   const [isCreatingChat, setIsCreatingChat] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const { textareaRef, adjustHeight } = useAutoResizeTextarea({
+    minHeight: 60,
+    maxHeight: 200,
+  });
 
   const transport = useMemo(
     () =>
@@ -69,7 +138,6 @@ export function Chat({ chatId, initialMessages }: ChatProps) {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Send pending message when landing on /c/[id] with a message stored from home
   useEffect(() => {
     if (!chatId || typeof window === "undefined") return;
     const pending = sessionStorage.getItem(PENDING_MESSAGE_KEY(chatId));
@@ -77,7 +145,7 @@ export function Chat({ chatId, initialMessages }: ChatProps) {
       sessionStorage.removeItem(PENDING_MESSAGE_KEY(chatId));
       sendMessage({ text: pending });
     }
-  }, [chatId]); // eslint-disable-line react-hooks/exhaustive-deps -- only run when chatId is set, sendMessage is stable
+  }, [chatId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function startNewChatWithMessage(text: string) {
     if (!text.trim() || isCreatingChat) return;
@@ -99,7 +167,6 @@ export function Chat({ chatId, initialMessages }: ChatProps) {
       setInput("");
     } catch (err) {
       console.error(err);
-      // Could show a toast here
     } finally {
       setIsCreatingChat(false);
     }
@@ -111,10 +178,13 @@ export function Chat({ chatId, initialMessages }: ChatProps) {
     if (!text || isLoading) return;
     if (!chatId) {
       startNewChatWithMessage(text);
+      setInput("");
+      adjustHeight(true);
       return;
     }
     sendMessage({ text });
     setInput("");
+    adjustHeight(true);
   }
 
   function handleSuggestionClick(suggestion: string) {
@@ -122,36 +192,32 @@ export function Chat({ chatId, initialMessages }: ChatProps) {
       startNewChatWithMessage(suggestion);
       return;
     }
-    setInput(suggestion);
     sendMessage({ text: suggestion });
     setInput("");
+    adjustHeight(true);
   }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit();
+    }
+  }
+
+  const isEmpty = messages.length === 0;
 
   return (
     <div className="flex h-full flex-col">
       <div className="flex-1 overflow-y-auto px-4 py-6">
         <div className="mx-auto max-w-2xl space-y-6">
-          {messages.length === 0 && (
+          {isEmpty && (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <h2 className="mb-2 text-2xl font-semibold text-neutral-800">
                 Que puis-je faire pour vous aujourd'hui ?
               </h2>
-              <p className="mb-8 text-sm text-neutral-500">
+              <p className="text-sm text-neutral-500">
                 Posez une question sur les clients, leads ou projets Volteyr.
               </p>
-              <div className="flex flex-wrap justify-center gap-2">
-                {SUGGESTIONS.map((suggestion) => (
-                  <button
-                    key={suggestion}
-                    type="button"
-                    onClick={() => handleSuggestionClick(suggestion)}
-                    disabled={isLoading || isCreatingChat}
-                    className="rounded-lg border border-neutral-200 bg-white px-4 py-2.5 text-sm text-neutral-700 shadow-sm transition hover:bg-neutral-50 hover:border-neutral-300 disabled:opacity-50"
-                  >
-                    {suggestion}
-                  </button>
-                ))}
-              </div>
             </div>
           )}
 
@@ -187,33 +253,33 @@ export function Chat({ chatId, initialMessages }: ChatProps) {
                           <ReactMarkdown
                             remarkPlugins={[remarkGfm]}
                             components={{
-                            table: ({ children, ...props }) => (
-                              <div className="my-3 w-full overflow-x-auto">
-                                <table
-                                  className="min-w-full border-collapse border border-neutral-300"
+                              table: ({ children, ...props }) => (
+                                <div className="my-3 w-full overflow-x-auto">
+                                  <table
+                                    className="min-w-full border-collapse border border-neutral-300"
+                                    {...props}
+                                  >
+                                    {children}
+                                  </table>
+                                </div>
+                              ),
+                              th: ({ children, ...props }) => (
+                                <th
+                                  className="border border-neutral-300 bg-neutral-100 px-3 py-2 text-left text-sm font-medium text-neutral-800"
                                   {...props}
                                 >
                                   {children}
-                                </table>
-                              </div>
-                            ),
-                            th: ({ children, ...props }) => (
-                              <th
-                                className="border border-neutral-300 bg-neutral-100 px-3 py-2 text-left text-sm font-medium text-neutral-800"
-                                {...props}
-                              >
-                                {children}
-                              </th>
-                            ),
-                            td: ({ children, ...props }) => (
-                              <td
-                                className="border border-neutral-300 px-3 py-2 text-sm text-neutral-800"
-                                {...props}
-                              >
-                                {children}
-                              </td>
-                            ),
-                          }}
+                                </th>
+                              ),
+                              td: ({ children, ...props }) => (
+                                <td
+                                  className="border border-neutral-300 px-3 py-2 text-sm text-neutral-800"
+                                  {...props}
+                                >
+                                  {children}
+                                </td>
+                              ),
+                            }}
                           >
                             {part.text}
                           </ReactMarkdown>
@@ -275,25 +341,73 @@ export function Chat({ chatId, initialMessages }: ChatProps) {
         </div>
       </div>
 
-      <div className="shrink-0 border-t border-neutral-200 bg-white px-4 py-4">
-        <form onSubmit={handleSubmit} className="mx-auto max-w-2xl">
-          <div className="flex gap-2 rounded-xl border border-neutral-200 bg-neutral-50 shadow-sm focus-within:ring-2 focus-within:ring-neutral-400 focus-within:ring-offset-2">
-            <input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Votre message..."
-              disabled={isLoading || isCreatingChat}
-              className="flex-1 bg-transparent px-4 py-3 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none disabled:opacity-50"
-            />
-            <button
-              type="submit"
-              disabled={isLoading || isCreatingChat || !input.trim()}
-              className="flex items-center justify-center rounded-r-xl bg-neutral-900 px-4 text-white transition hover:bg-neutral-800 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Send className="h-4 w-4" />
-            </button>
-          </div>
-        </form>
+      <div className="shrink-0 border-t border-neutral-200 bg-neutral-50 px-4 py-4">
+        <div className="mx-auto max-w-2xl space-y-4">
+          <form onSubmit={handleSubmit}>
+            <div className="relative rounded-xl border border-neutral-200 bg-white shadow-sm focus-within:ring-2 focus-within:ring-neutral-400 focus-within:ring-offset-2 focus-within:border-neutral-300">
+              <div className="overflow-y-auto">
+                <Textarea
+                  ref={textareaRef}
+                  value={input}
+                  onChange={(e) => {
+                    setInput(e.target.value);
+                    adjustHeight();
+                  }}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Votre message..."
+                  disabled={isLoading || isCreatingChat}
+                  className={cn(
+                    "w-full px-4 py-3 resize-none bg-transparent border-none",
+                    "text-neutral-900 text-sm",
+                    "focus:outline-none focus-visible:ring-0 focus-visible:ring-offset-0",
+                    "placeholder:text-neutral-400 placeholder:text-sm",
+                    "min-h-[60px] disabled:opacity-50"
+                  )}
+                  style={{ overflow: "hidden" }}
+                />
+              </div>
+              <div className="flex items-center justify-between p-3 border-t border-neutral-100">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    className="group p-2 hover:bg-neutral-100 rounded-lg transition-colors flex items-center gap-1"
+                  >
+                    <Paperclip className="w-4 h-4 text-neutral-500" />
+                    <span className="text-xs text-neutral-400 hidden group-hover:inline transition-opacity">
+                      Joindre
+                    </span>
+                  </button>
+                </div>
+                <button
+                  type="submit"
+                  disabled={isLoading || isCreatingChat || !input.trim()}
+                  className={cn(
+                    "px-3 py-1.5 rounded-lg text-sm transition-colors border flex items-center gap-1",
+                    input.trim()
+                      ? "bg-neutral-900 text-white border-neutral-900 hover:bg-neutral-800"
+                      : "text-neutral-400 border-neutral-200 bg-neutral-50"
+                  )}
+                >
+                  <Send className={cn("w-4 h-4", input.trim() ? "text-white" : "text-neutral-400")} />
+                  <span className="sr-only">Envoyer</span>
+                </button>
+              </div>
+            </div>
+          </form>
+
+          {isEmpty && (
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              {SUGGESTIONS.map((suggestion) => (
+                <ActionButton
+                  key={suggestion}
+                  label={suggestion}
+                  onClick={() => handleSuggestionClick(suggestion)}
+                  disabled={isLoading || isCreatingChat}
+                />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
