@@ -262,6 +262,14 @@ export function Chat({ chatId, initialMessages }: ChatProps) {
               <div className="flex min-w-0 flex-1 flex-col gap-1">
                 {message.parts.map((part, i) => {
                   if (part.type === "text") {
+                    // Ne pas afficher le texte de l'assistant quand la réponse contient un graphique
+                    // (évite la "grande formule" / long texte qui déborde pendant le stream)
+                    const hasChartInvocation = message.toolInvocations?.some(
+                      (ti: any) => ti.toolName === "generateVisualChart"
+                    );
+                    if (message.role === "assistant" && hasChartInvocation) {
+                      return null;
+                    }
                     const content =
                       message.role === "assistant" ? (
                         <div className="markdown-chat text-neutral-100 [&_p]:my-1 [&_ul]:my-2 [&_ol]:my-2">
