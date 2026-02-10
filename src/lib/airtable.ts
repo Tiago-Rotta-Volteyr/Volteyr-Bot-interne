@@ -11,18 +11,33 @@ if (!apiKey || !baseId) {
 
 const base = new Airtable({ apiKey }).base(baseId);
 
-/** Schéma Airtable simplifié (tableName + champs name/type uniquement) */
+/** Schéma Airtable simplifié (tableName + champs avec options pour singleSelect/multipleSelect) */
 export interface SimplifiedAirtableSchema {
   tables: Array<{
     tableName: string;
-    fields: Array<{ name: string; type: string }>;
+    fields: Array<
+      | { name: string; type: string }
+      | { name: string; type: string; options: string[] }
+    >;
   }>;
+}
+
+interface AirtableMetaChoice {
+  name?: string;
+  id?: string;
+}
+
+interface AirtableMetaField {
+  id: string;
+  name: string;
+  type: string;
+  options?: { choices?: AirtableMetaChoice[] };
 }
 
 interface AirtableMetaTable {
   id: string;
   name: string;
-  fields: Array<{ id: string; name: string; type: string }>;
+  fields: AirtableMetaField[];
 }
 
 interface AirtableMetaTablesResponse {
@@ -54,7 +69,20 @@ export async function fetchAirtableSchema(): Promise<
     const simplified: SimplifiedAirtableSchema = {
       tables: data.tables.map((t) => ({
         tableName: t.name,
-        fields: t.fields.map((f) => ({ name: f.name, type: f.type })),
+        fields: t.fields.map((f) => {
+          const baseField = { name: f.name, type: f.type };
+          const choices =
+            (f.type === "singleSelect" || f.type === "multipleSelect") &&
+            Array.isArray(f.options?.choices)
+              ? (f.options.choices as AirtableMetaChoice[])
+                  .map((c) => c?.name)
+                  .filter((n): n is string => typeof n === "string")
+              : undefined;
+          if (choices && choices.length > 0) {
+            return { ...baseField, options: choices };
+          }
+          return baseField;
+        }),
       })),
     };
     schemaCache = { data: simplified, expiresAt: Date.now() + SCHEMA_CACHE_TTL_MS };

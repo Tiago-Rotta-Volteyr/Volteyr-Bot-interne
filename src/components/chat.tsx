@@ -8,12 +8,25 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import {
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend,
+} from "recharts";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
 const TOOL_LABELS: Record<string, string> = {
   searchRecords: "🔍 Recherche dans Airtable en cours...",
   getRecordDetails: "📄 Lecture du dossier en cours...",
+  generateVisualChart: "📊 Calcul des statistiques en cours...",
 };
 
 const SUGGESTIONS = [
@@ -30,6 +43,8 @@ function getToolLabel(toolName: string): string {
 function isToolPart(part: { type: string }): part is { type: string; state?: string; toolCallId: string } {
   return part.type.startsWith("tool-");
 }
+
+const CHART_COLORS = ["#4f46e5", "#6366f1", "#818cf8", "#a855f7", "#ec4899", "#64748b"];
 
 function useAutoResizeTextarea({
   minHeight,
@@ -320,6 +335,91 @@ export function Chat({ chatId, initialMessages }: ChatProps) {
                   }
 
                   return null;
+                })}
+
+                {message.toolInvocations?.map((toolInvocation: any) => {
+                  if (toolInvocation.toolName !== "generateVisualChart") return null;
+
+                  const key = `${message.id}-chart-${toolInvocation.toolCallId ?? "0"}`;
+
+                  if (toolInvocation.state !== "result") {
+                    return (
+                      <div
+                        key={key}
+                        className="mt-2 rounded-xl border border-neutral-600 bg-neutral-800 px-3 py-2 text-xs text-neutral-200"
+                      >
+                        📊 Calcul des statistiques en cours...
+                      </div>
+                    );
+                  }
+
+                  const result = toolInvocation.result as {
+                    chartType?: string;
+                    data?: { name: string; value: number }[];
+                    error?: string;
+                  };
+
+                  if (!result || !Array.isArray(result.data) || result.data.length === 0) {
+                    return (
+                      <div
+                        key={key}
+                        className="mt-2 rounded-xl border border-neutral-600 bg-neutral-800 px-3 py-2 text-xs text-neutral-200"
+                      >
+                        Aucun résultat à afficher pour ce graphique.
+                        {result?.error ? ` (${result.error})` : ""}
+                      </div>
+                    );
+                  }
+
+                  const chartType = result.chartType === "bar" ? "bar" : "pie";
+
+                  return (
+                    <div
+                      key={key}
+                      className="mt-3 rounded-xl border border-neutral-600 bg-neutral-900 px-3 py-3"
+                    >
+                      <div className="h-72 w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                          {chartType === "pie" ? (
+                            <PieChart>
+                              <Pie
+                                data={result.data}
+                                dataKey="value"
+                                nameKey="name"
+                                innerRadius={40}
+                                outerRadius={80}
+                                paddingAngle={2}
+                              >
+                                {result.data.map((entry, index) => (
+                                  <Cell
+                                    key={`cell-${index}`}
+                                    fill={CHART_COLORS[index % CHART_COLORS.length]}
+                                  />
+                                ))}
+                              </Pie>
+                              <Tooltip />
+                              <Legend />
+                            </PieChart>
+                          ) : (
+                            <BarChart data={result.data}>
+                              <XAxis dataKey="name" />
+                              <YAxis allowDecimals={false} />
+                              <Tooltip />
+                              <Legend />
+                              <Bar dataKey="value">
+                                {result.data.map((entry, index) => (
+                                  <Cell
+                                    key={`cell-${index}`}
+                                    fill={CHART_COLORS[index % CHART_COLORS.length]}
+                                  />
+                                ))}
+                              </Bar>
+                            </BarChart>
+                          )}
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                  );
                 })}
               </div>
             </div>

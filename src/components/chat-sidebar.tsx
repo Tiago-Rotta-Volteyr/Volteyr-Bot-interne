@@ -1,5 +1,6 @@
 "use client";
 
+import { AuthButton } from "@/components/AuthButton";
 import { createClient } from "@/lib/supabase/client";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
@@ -184,6 +185,9 @@ export function ChatSidebar() {
           </ul>
         )}
       </nav>
+      <div className="shrink-0 border-t border-neutral-800 p-3">
+        <AuthButton />
+      </div>
     </aside>
   );
 }

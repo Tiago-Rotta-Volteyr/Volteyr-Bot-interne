@@ -43,7 +43,23 @@ Bad Table: | Name | Company | Email | Phone | City | Zip | Status | Notes | ...
 
 "Specific Query" Scenarios: If the user filters by a specific criteria (e.g., "Clients in Paris"), include that criteria in the table (add the 'City' column) so the user understands the result.
 
-"Detail" Scenarios: Only show full details (Email, Phone, Notes) if the user explicitly asks for "details" or asks about a specific single record.`;
+"Detail" Scenarios: Only show full details (Email, Phone, Notes) if the user explicitly asks for "details" or asks about a specific single record.
+
+Comments / Notes Scenarios: When the user specifically asks for comments, notes, or history for a person or a record, DO NOT use tables. Instead:
+- Write a short introductory sentence.
+- Then use a Markdown bullet list (one bullet per comment), including only the relevant information (e.g. date, author, and the comment text).
+- Avoid showing other fields or dumping the entire record; focus on the comments themselves.
+
+VISUAL REPORTS: When asked for a visual chart or graph, ALWAYS use the \`generateVisualChart\` tool. DO NOT try to make text-based charts. Once the tool returns the data, just add a short 1-sentence analytical comment below it.
+
+AIRTABLE SEARCH RULES (CRITICAL):
+Never guess Enum values: For fields with predefined options (like Status), strictly use the exact string provided in the schema options. Do not invent statuses like 'Closed' if the schema says 'Projet fini'.
+
+Case-Insensitive Searching: When writing filterByFormula for text fields (Name, Company, etc.), NEVER use strict equality (=). You MUST use SEARCH(LOWER('query'), LOWER({FieldName})) to ensure case-insensitivity.
+
+Partial Word Matching: If a user searches for a full name (e.g., 'Jean Dupont'), do not search for the exact string. Search for just one strong keyword (e.g., 'Dupont') to avoid word-order issues.
+
+If a search returns 0 results, retry automatically with a shorter, partial keyword before telling the user you found nothing.`;
 
 /** Fallback si fetchAirtableSchema échoue : le prompt reste valide. */
 const SCHEMA_FALLBACK = `Schéma Airtable temporairement indisponible. Utilise les noms de tables habituels (ex: Clients, Leads, Projet) et les champs courants (Name, Nom, Status, etc.).`;
@@ -158,7 +174,7 @@ export async function POST(req: Request) {
               .firstPage();
 
             if (records.length === 0) {
-              return `Aucun résultat trouvé dans la table "${table}" pour cette formule. Vérifiez le nom de la table (exactement comme dans le schéma) et la formule.`;
+              return `Aucun résultat trouvé dans la table "${table}" pour cette formule. Vérifiez le nom de la table (exactement comme dans le schéma) et la formule. Si 0 résultats, réessaie avec un mot-clé plus court ou partiel (règles AIRTABLE SEARCH RULES).`;
             }
 
             return JSON.stringify(
@@ -169,7 +185,7 @@ export async function POST(req: Request) {
             );
           } catch (err) {
             const msg = err instanceof Error ? err.message : String(err);
-            return `Erreur Airtable (table "${table}"): ${msg}. Vérifiez que le nom de la table correspond exactement au schéma (ex: Clients vs Client).`;
+            return `Erreur Airtable (table "${table}"): ${msg}. Il peut s'agir d'une erreur de syntaxe dans filterByFormula ou d'un nom de champ incorrect. Corrige la formule (respecte les règles: SEARCH(LOWER('x'), LOWER({Champ})), options exactes pour les select) et réessaie.`;
           }
         },
       }),
@@ -203,6 +219,76 @@ export async function POST(req: Request) {
             return JSON.stringify(summary, null, 2);
           } catch (err) {
             return "Erreur: Impossible de trouver ce record. Vérifiez l'ID et le nom de la table.";
+          }
+        },
+      }),
+
+      generateVisualChart: tool({
+        description:
+          "Use this tool MUST be used when the user asks for a visual chart, pie chart, bar chart, or a dashboard showing the distribution of data (e.g., 'Montre moi un camembert des statuts').",
+        inputSchema: z.object({
+          table: z
+            .enum(["Leads", "Clients", "Projets"])
+            .describe("Nom de la table Airtable à analyser (Leads, Clients ou Projets)."),
+          chartType: z
+            .enum(["pie", "bar"])
+            .describe("Type de graphique à générer (camembert ou barres)."),
+          groupBy: z
+            .string()
+            .describe(
+              "Nom exact du champ sur lequel regrouper (souvent 'Status', 'Statut' ou 'Secteur')."
+            ),
+        }),
+        execute: async ({ table, chartType, groupBy }) => {
+          try {
+            const tableInstance = base(table);
+            const records = await tableInstance
+              .select({
+                fields: [groupBy],
+                maxRecords: 500,
+              })
+              .all();
+
+            const counts = new Map<string, number>();
+
+            for (const record of records) {
+              const value = record.get(groupBy);
+
+              // Gère les single/multiple select (tableau) ou simple string/number
+              const values: string[] = Array.isArray(value)
+                ? value.map((v) =>
+                    typeof v === "string"
+                      ? v
+                      : typeof v === "object" && v !== null && "name" in v
+                      ? String((v as { name?: unknown }).name ?? "")
+                      : String(v)
+                  )
+                : value == null
+                ? []
+                : [String(value)];
+
+              for (const v of values) {
+                const key = v.trim() || "(Inconnu)";
+                counts.set(key, (counts.get(key) ?? 0) + 1);
+              }
+            }
+
+            const data = Array.from(counts.entries()).map(([name, value]) => ({
+              name,
+              value,
+            }));
+
+            return {
+              chartType,
+              data,
+            };
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            return {
+              chartType,
+              data: [],
+              error: `Erreur lors du calcul du graphique pour la table \"${table}\" groupée par \"${groupBy}\": ${msg}`,
+            };
           }
         },
       }),
