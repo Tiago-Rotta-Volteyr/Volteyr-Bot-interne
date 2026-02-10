@@ -1,7 +1,21 @@
-export default function Home() {
+import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
+import { Chat } from "@/components/chat";
+import { ChatLayout } from "@/components/chat-layout";
+
+export default async function HomePage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
   return (
-    <main className="min-h-screen p-8">
-      <h1 className="text-xl font-semibold">Chatbot SAAS</h1>
-    </main>
+    <ChatLayout>
+      <Chat />
+    </ChatLayout>
   );
 }
